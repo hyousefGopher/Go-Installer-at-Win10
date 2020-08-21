@@ -22,50 +22,49 @@ function InstallGo {
         If(test-path $path)
         {
             $pathAll = $path + "*"
-            Write-Output "Removing the currently installed Go from $path"
+            Write-Output " Removing the currently installed Go from $path"
             Remove-Item $pathAll -recurse
         } else {
            # New-Item -ItemType Directory -Force -Path $path
-           Write-Output "Creating the directory required for GO installation: $path"
+           Write-Output " Creating the directory required for GO installation: $path"
            mkdir $path
         }
         # Download the zip file at the defined destination
-        Write-Output "downloading $url"
-        Invoke-WebRequest $url -OutFile $dest
-        Write-Output "$url downloaded as $dest"
+        Write-Output " Downloading $url"
+        #Invoke-WebRequest $url -OutFile $dest
+        Write-Output " $url downloaded as $dest"
 
         # Unzip the file
-        Write-Output "Extracting $file to $path"
+        Write-Output " Extracting $file to $path"
         Expand-Archive -Force -Path $dest -DestinationPath $path\..
-        Write-Output "Extraction completed, Adding GO SDK to path"
+        Write-Output " Extraction completed, Adding GO SDK to path"
         # Add GO to the Path (if not exisiting)
-        $addPath = '%USERPROFILE%\go\bin'
-        # Iterate through all the existing paths ato check if the new path is already included with or without a '\' on the end:
-        if (Test-Path $addPath){
-            $regexAddPath = [regex]::Escape($addPath)
-            $arrPath = $env:Path -split ';' | Where-Object {$_ -notMatch "^$regexAddPath\\?"}
-            $env:Path = ($arrPath + $addPath) -join ';'
-            Write-Output "$addPath had been added to path."
-        } else {
-            Write-Output "$addPath already in path."
-            # Throw "'$addPath' is not a valid path."
-        }
-        Write-Output "GO SDK is ready in the path, setting up Environment Variables"
+        $addPath = 'C:\go\bin'
+        # Iterate through all the existing paths to check if the new path is already included with or without a '\' on the end:
+        $env = [Environment]::GetEnvironmentVariable("PATH",1)
+        $regexAddPath = [regex]::Escape($addPath)
+        $arrPath = $env -split ';' | Where-Object {$_ -notMatch "^$regexAddPath\\?"}
+        $env = ($arrPath + $addPath) -join ';'
+        [Environment]::SetEnvironmentVariable("PATH", $env, "USER")
+        Write-Output " $addPath had been added to path."
+
+        Write-Output " GO SDK is ready in the path, setting up Environment Variables"
         #Setting up variables
         # set the $GOROOT (Aka $GOBIN), GOROOT is a variable that defines where your Go SDK is located
         $goroot = Join-Path $path "bin"
         [Environment]::SetEnvironmentVariable( "GOROOT", $goroot, [System.EnvironmentVariableTarget]::User)
         # set the $GOPATH; GOPATH is a variable that defines the root of your workspace
+        $gopath = Join-Path $Home $workDir
         [Environment]::SetEnvironmentVariable( "GOPATH", $gopath, [System.EnvironmentVariableTarget]::User)
         # Setup the Go workspace; if it doesn't exist.
         If (!(Test-Path $workDir)) {
             New-Item -path $workDir -type directory
-            Write-Output "Go work space had been created: $workDir"
+            Write-Output " Go work space had been created: $gopath"
         } else {
-            Write-Output "Go work space already exist: $workDir"
+            Write-Output " Go work space already exist: $gopath"
         }
-        Write-Output "=============================================="
-        Write-Output "GO is ready, Below you'll see list of GO command"
+        Write-Output " =============================================="
+        Write-Output " GO is ready, Below you'll see list of GO command"
         go
   }
 
@@ -86,7 +85,7 @@ $ToNatural = { [regex]::Replace($_, '\d+', { $args[0].Value.PadLeft(20) }) }
 $latest_version=$($release_branches.P2 | Select-String -Pattern '(\d+\.\d+)').Matches.Groups.Value |
  Sort-Object $ToNatural | Select-Object -Last 1
 
- Write-Output "Latest GO lang version is: $latest_version"
+ Write-Output " Latest GO lang version is: $latest_version"
 
 # Check installed version of GO lang 
 $cmdName = 'go'
@@ -95,13 +94,13 @@ Try{
     $goversioncheck = go version
     $goversion = [regex]::Match($goversioncheck, '((\d+\.\d+))').captures.groups[1].value
 
-    if ($goversion -ne $latest_version) {
-        Write-Output "You already have latest GO lang version installed, version: $goversion"
+    if ($goversion -eq $latest_version) {
+        Write-Output " You already have latest GO lang version installed, version: $goversion"
     } else {
-        Write-Host "Upgrade Install of GO lang will start now"
+        Write-Host " Upgrade Install of GO lang will start now"
         InstallGo -latest_version $latest_version -workDir $workDir
     }
   } Catch{
-    Write-Host "Fresh Install of GO lang will start now"
+    Write-Host " Fresh Install of GO lang will start now"
     InstallGo -latest_version $latest_version -workDir $workDir
   }
